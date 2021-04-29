@@ -8,7 +8,7 @@
 #define RSIZ 10 
 
 int main(void) {
- char line[RSIZ][LSIZ];
+    char line[RSIZ][LSIZ];
 	
     FILE *fptr = NULL; 
     int i = 0;
@@ -38,7 +38,7 @@ int main(void) {
     *(memoryPtr) = num;
     n = *(memoryPtr);
 
-    memorySize = sizeof(M) + sizeof(n) + sizeof(x) + sizeof(y) + (n*sizeof(int));
+    memorySize = sizeof(M) + sizeof(n) + sizeof(x) + sizeof(y) + (2 * n * sizeof(int));
     memoryPtr = realloc(memoryPtr, memorySize);
     //+(x*sizeof(int)) + (y*sizeof(int))
 
@@ -64,16 +64,43 @@ int main(void) {
 
     printf("parent num: %d", num);
     if (result == 0) {
-    printf("Child process %d. child pid: %d parent pid: %d \n",i, getpid(), getppid());
-    printf("child M: %d", *(memoryPtr+4));
-    printf("child n: %d", *(memoryPtr));
-    printf("child num: %d", num);
-    //wait(NULL);
+        printf("Child process %d. child pid: %d parent pid: %d \n",i, getpid(), getppid());
+        printf("child M: %d\n", *(memoryPtr+4));
+        printf("child n: %d\n", *(memoryPtr));
+        printf("child num: %d\n", num);
+        printf("A: %p\n", A);
+
+        //child 1
+        int xCounter = 0;
+        for (int l = 0 ; l<n; l++) {
+            if (A[l] <= M) {
+                xCounter++;
+            }
+        }
+        //write x value
+        *(memoryPtr + (2 * sizeof(int))) = xCounter;
+
+        //B start address
+        int* B = &A[n+1];
+
+        //copy into B
+        int bCounter = 0;
+        for (int l = 0 ; l<n; l++) {
+            if (A[l] <= M) {
+                B[bCounter] = A[l];
+                bCounter++;
+            }
+        }
+        //wait(NULL);
     }
     else {
-    printf("Parent process (i=%d). pid: %d \n",i, getpid());
-    
-  }
+        //wait(NULL);
+
+        //TO DO MAin process child dan sonra z i printleyebilsin
+        printf("A: %p\n", A);
+        printf("Parent process (i=%d). pid: %d \n",i, getpid());
+        printf("x value: %d", *(memoryPtr+8));
+    }
 
 
 
