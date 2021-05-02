@@ -29,7 +29,7 @@ void initKeys(char* argv[])
     strcat(keyString, argv[0]);
     
     KEYSEM = ftok(keyString, 1);
-    //KEYSHM = ftok(keyString, 2);
+    KEYSHM = ftok(keyString, 2);
     
     //  deallocate keystring
     free(keyString);
@@ -51,31 +51,34 @@ int main(int argc, char *argv[]) {
     int x;
     int y;
     int memorySize = sizeof(M) + sizeof(n) + sizeof(x) + sizeof(y) + (2 * n * sizeof(int));
-    //int* memoryPtr = (int*) malloc(memorySize);
-    int* memoryPtr = NULL;
+    int* memoryPtr = (int*) malloc(memorySize);
+    //int* memoryPtr = NULL;
     int child[2];  //  child process ids
 
     initKeys(argv);
 
     //  creating a shared memory area with the size of an int
     printf("keyshm: %d", KEYSHM);
-    shmid = shmget(KEYSHM, memorySize, 0666|IPC_CREAT);
+    //shmid = shmget(KEYSHM, memorySize, 0700|IPC_CREAT);
 
     //  attaching the shared memory segment identified by shmid
     //to the address space of the calling process(parent)
-    memoryPtr = (int*)shmat(shmid, 0, 0);
+    //memoryPtr = (int*)shmat(shmid, 0, 0);
 
     //  detaching the shared memory segment from the address
     //space of the calling process(parent)
     //shmdt(memoryPtr);
 
     printf("\n\n Read the file and store the lines into an array :\n");
-	printf("------------------------------------------------------\n"); 
-	printf(" Input the filename to be opened : ");
+	printf("---------------------------------------------------\n"); 
     char fname[20] = "test.txt";
     //char fname[20];
 	//scanf("%s",fname);	
     int counter = 0;
+
+    //geet shared memory 
+    //shmid = shmget(KEYSHM, memorySize, 0);
+    //memoryPtr = (int*) shmat(shmid,0,0);
 
     fptr = fopen(fname, "r");
     int num;
@@ -115,14 +118,15 @@ int main(int argc, char *argv[]) {
 
     //  detaching the shared memory segment from the address
     //space of the calling process(parent)
-    shmdt(memoryPtr);
-    sleep(2);
+    //shmdt(memoryPtr);
+    //sleep(2);
 
     int result;
     //  create 2 child processes
+    /*
     for (i = 0; i < 2; ++i)
     {
-        result = fork();
+        //result = fork();
         if (result < 0)
         {
             printf("FORK error...\n");
@@ -132,6 +136,7 @@ int main(int argc, char *argv[]) {
             break;
         child[i] = result;
     }
+    */
 
     if (result == 0) {
         printf("Child process %d. child pid: %d parent pid: %d \n",i, getpid(), getppid());
@@ -163,12 +168,12 @@ int main(int argc, char *argv[]) {
                 bCounter++;
             }
         }
-        shmdt(memoryPtr);
+        //shmdt(memoryPtr);
         exit(0);
         //wait(NULL);
     }
     else {
-        wait(NULL);
+        //wait(NULL);
         int* B = &A[n+1];
         printf("B value in parent: %d\n", B[0]);
         printf("x address in parent: %p\n", xPtr);
@@ -181,9 +186,10 @@ int main(int argc, char *argv[]) {
         printf("A: %p\n", A);
         printf("Parent process (i=%d). pid: %d \n",i, getpid());
         printf("x value: %d", *(memoryPtr+8));
+        exit(0);
     }
 
 
-    shmdt(memoryPtr);
+    //shmdt(memoryPtr);
     return 0;
 }
