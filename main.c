@@ -123,7 +123,7 @@ int main(int argc, char *argv[]) {
 
     int result;
     //  create 2 child processes
-    /*
+    
     for (i = 0; i < 2; ++i)
     {
         //result = fork();
@@ -136,7 +136,7 @@ int main(int argc, char *argv[]) {
             break;
         child[i] = result;
     }
-    */
+    
 
     if (result == 0) {
         printf("Child process %d. child pid: %d parent pid: %d \n",i, getpid(), getppid());
