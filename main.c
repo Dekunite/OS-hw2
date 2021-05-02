@@ -10,11 +10,13 @@
 #include <sys/sem.h>
 #include <sys/types.h>
 
+ #include <sys/stat.h> 
+
 #define LSIZ 128 
 #define RSIZ 10 
 
 int KEYSEM;
-int KEYSHM = 156;
+key_t KEYSHM = 365;
 void initKeys(char* argv[])
 {
     char cwd[256];
@@ -50,11 +52,9 @@ int main(int argc, char *argv[]) {
     int n;
     int x;
     int y;
-    
-    //int* memoryPtr = NULL;
     int child[2];  //  child process ids
 
-    initKeys(argv);
+    //initKeys(argv);
 
     printf("keyshm: %d", KEYSHM);
 
@@ -80,18 +80,22 @@ int main(int argc, char *argv[]) {
 
     int memorySize = sizeof(M) + sizeof(n) + sizeof(x) + sizeof(y) + (2 * n * sizeof(int));
     int* memoryPtr = (int*) malloc(memorySize);
+    //int* memoryPtr = NULL;
     printf("memory size: %d", memorySize);
 
     //  creating a shared memory area with the size of an int
-    //shmid = shmget(KEYSHM, memorySize, 0700|IPC_CREAT);
+    shmid = shmget(KEYSHM, memorySize, IPC_CREAT | 0666);
+    printf("memory size: %d", shmid);
 
     //  attaching the shared memory segment identified by shmid
     //to the address space of the calling process(parent)
-    //memoryPtr = (int*)shmat(shmid, 0, 0);
-
-    //  detaching the shared memory segment from the address
-    //space of the calling process(parent)
-    //shmdt(memoryPtr);
+    memoryPtr = (int *) shmat(shmid, 0, 0);
+    *memoryPtr = 0;
+    
+    //n değerini ata
+    *(memoryPtr) = n; 
+    //m değerini ata
+    *(memoryPtr + sizeof(n)) = M;
 
     //init x as -1
     int* xPtr = (memoryPtr + (2* sizeof(int)));
@@ -112,11 +116,19 @@ int main(int argc, char *argv[]) {
     printf("M: %d \n",M);
     printf("n: %d \n",n);
 
-    int result;
+    //  detaching the shared memory segment from the address
+    //space of the calling process(parent)
+    shmdt(memoryPtr);
+    //sleep(2);
+
+    //shmctl(shmid, IPC_RMID, 0);
+
+    // nullamayı unutma
+    int result = 1;
     //  create 2 child processes
     for (i = 0; i < 2; ++i)
     {
-        result = fork();
+        //result = fork();
         if (result < 0)
         {
             printf("FORK error...\n");
@@ -126,8 +138,8 @@ int main(int argc, char *argv[]) {
             break;
         child[i] = result;
     }
-    
 
+    
     if (result == 0) {
         printf("child M: %d\n", *(memoryPtr+4));
         printf("child n: %d\n", *(memoryPtr));
@@ -160,6 +172,7 @@ int main(int argc, char *argv[]) {
         exit(0);
     }
     else {
+        /*
         int* B = &A[n+1];
         printf("B value in parent: %d\n", B[0]);
         printf("x address in parent: %p\n", xPtr);
@@ -172,6 +185,7 @@ int main(int argc, char *argv[]) {
         printf("A: %p\n", A);
         printf("x value: %d", *(memoryPtr+8));
         exit(0);
+        */
     }
 
     return 0;
