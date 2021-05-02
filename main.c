@@ -50,15 +50,39 @@ int main(int argc, char *argv[]) {
     int n;
     int x;
     int y;
-    int memorySize = sizeof(M) + sizeof(n) + sizeof(x) + sizeof(y) + (2 * n * sizeof(int));
-    int* memoryPtr = (int*) malloc(memorySize);
+    
     //int* memoryPtr = NULL;
     int child[2];  //  child process ids
 
     initKeys(argv);
 
-    //  creating a shared memory area with the size of an int
     printf("keyshm: %d", KEYSHM);
+
+    printf("\n\n Read the file and store the lines into an array :\n");
+	printf("---------------------------------------------------\n"); 
+    char fname[20] = "test.txt";
+    //char fname[20];
+	//scanf("%s",fname);	
+    int counter = 0;
+
+    fptr = fopen(fname, "r");
+    int num;
+    //first line
+    fscanf(fptr, "%d", &num);
+    //*(memoryPtr + sizeof(n)) = num;
+    //M = *(memoryPtr + sizeof(n));
+    M = num;
+    //second line
+    fscanf(fptr, "%d", &num);
+    //*(memoryPtr) = num;
+    //n = *(memoryPtr);
+    n = num;
+
+    int memorySize = sizeof(M) + sizeof(n) + sizeof(x) + sizeof(y) + (2 * n * sizeof(int));
+    int* memoryPtr = (int*) malloc(memorySize);
+    printf("memory size: %d", memorySize);
+
+    //  creating a shared memory area with the size of an int
     //shmid = shmget(KEYSHM, memorySize, 0700|IPC_CREAT);
 
     //  attaching the shared memory segment identified by shmid
@@ -69,37 +93,11 @@ int main(int argc, char *argv[]) {
     //space of the calling process(parent)
     //shmdt(memoryPtr);
 
-    printf("\n\n Read the file and store the lines into an array :\n");
-	printf("---------------------------------------------------\n"); 
-    char fname[20] = "test.txt";
-    //char fname[20];
-	//scanf("%s",fname);	
-    int counter = 0;
-
-    //geet shared memory 
-    //shmid = shmget(KEYSHM, memorySize, 0);
-    //memoryPtr = (int*) shmat(shmid,0,0);
-
-    fptr = fopen(fname, "r");
-    int num;
-    //first line
-    fscanf(fptr, "%d", &num);
-    *(memoryPtr + 4) = num;
-    M = *(memoryPtr + 4);
-    //second line
-    fscanf(fptr, "%d", &num);
-    *(memoryPtr) = num;
-    n = *(memoryPtr);
-
-    //memoryPtr = realloc(memoryPtr, memorySize);
-    //+(x*sizeof(int)) + (y*sizeof(int))
-
-
     //init x as -1
     int* xPtr = (memoryPtr + (2* sizeof(int)));
     //*xPtr = -1;
 
-    int* A = (memoryPtr + 16);
+    int* A = (memoryPtr + (4 * sizeof(int)));
     //third line & array
     for (int k = 0; k<n; k++) {
         fscanf(fptr, "%d", &num);
@@ -109,24 +107,16 @@ int main(int argc, char *argv[]) {
 	printf("\n The content of the file %s  are : \n",fname);    
     for(i = 0; i < n; ++i)
     {
-        //printf(" %s\n", line[i]);
         printf(" %d\n", A[i]);
     }
     printf("M: %d \n",M);
     printf("n: %d \n",n);
-    printf("\n");
-
-    //  detaching the shared memory segment from the address
-    //space of the calling process(parent)
-    //shmdt(memoryPtr);
-    //sleep(2);
 
     int result;
     //  create 2 child processes
-    
     for (i = 0; i < 2; ++i)
     {
-        //result = fork();
+        result = fork();
         if (result < 0)
         {
             printf("FORK error...\n");
@@ -139,7 +129,6 @@ int main(int argc, char *argv[]) {
     
 
     if (result == 0) {
-        printf("Child process %d. child pid: %d parent pid: %d \n",i, getpid(), getppid());
         printf("child M: %d\n", *(memoryPtr+4));
         printf("child n: %d\n", *(memoryPtr));
         printf("child num: %d\n", num);
@@ -168,12 +157,9 @@ int main(int argc, char *argv[]) {
                 bCounter++;
             }
         }
-        //shmdt(memoryPtr);
         exit(0);
-        //wait(NULL);
     }
     else {
-        //wait(NULL);
         int* B = &A[n+1];
         printf("B value in parent: %d\n", B[0]);
         printf("x address in parent: %p\n", xPtr);
@@ -184,12 +170,9 @@ int main(int argc, char *argv[]) {
 
         //TO DO MAin process child dan sonra z i printleyebilsin
         printf("A: %p\n", A);
-        printf("Parent process (i=%d). pid: %d \n",i, getpid());
         printf("x value: %d", *(memoryPtr+8));
         exit(0);
     }
 
-
-    //shmdt(memoryPtr);
     return 0;
 }
