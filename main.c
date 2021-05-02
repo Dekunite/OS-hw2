@@ -4,19 +4,70 @@
 #include <sys/wait.h>
 #include <string.h>
 
+//  for shared memory and semaphores
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <sys/sem.h>
+#include <sys/types.h>
+
 #define LSIZ 128 
 #define RSIZ 10 
 
-int main(void) {
+int KEYSEM;
+int KEYSHM = 156;
+void initKeys(char* argv[])
+{
+    char cwd[256];
+    char* keyString;
+    
+    //  get current working directory
+    getcwd(cwd, 256);
+    
+    //  form keystring
+    keyString = malloc(strlen(cwd) + strlen(argv[0]) + 1);
+    strcpy(keyString, cwd);
+    strcat(keyString, argv[0]);
+    
+    KEYSEM = ftok(keyString, 1);
+    //KEYSHM = ftok(keyString, 2);
+    
+    //  deallocate keystring
+    free(keyString);
+    
+    //  if you use get_current_dir_name, result of that call must be deallocated by caller
+    //because it creates its own buffer to store path.
+    //but in this example we use getcwd and our own buffer.
+}
+
+
+int main(int argc, char *argv[]) {
     char line[RSIZ][LSIZ];
 	
     FILE *fptr = NULL; 
+    int shmid = 0;
     int i = 0;
     int M ;
     int n;
     int x;
     int y;
-    int memorySize = sizeof(M) + sizeof(n);
+    int memorySize = sizeof(M) + sizeof(n) + sizeof(x) + sizeof(y) + (2 * n * sizeof(int));
+    //int* memoryPtr = (int*) malloc(memorySize);
+    int* memoryPtr = NULL;
+    int child[2];  //  child process ids
+
+    initKeys(argv);
+
+    //  creating a shared memory area with the size of an int
+    printf("keyshm: %d", KEYSHM);
+    shmid = shmget(KEYSHM, memorySize, 0666|IPC_CREAT);
+
+    //  attaching the shared memory segment identified by shmid
+    //to the address space of the calling process(parent)
+    memoryPtr = (int*)shmat(shmid, 0, 0);
+
+    //  detaching the shared memory segment from the address
+    //space of the calling process(parent)
+    //shmdt(memoryPtr);
 
     printf("\n\n Read the file and store the lines into an array :\n");
 	printf("------------------------------------------------------\n"); 
@@ -28,7 +79,6 @@ int main(void) {
 
     fptr = fopen(fname, "r");
     int num;
-    int* memoryPtr = (int*) malloc(memorySize);
     //first line
     fscanf(fptr, "%d", &num);
     *(memoryPtr + 4) = num;
@@ -38,9 +88,13 @@ int main(void) {
     *(memoryPtr) = num;
     n = *(memoryPtr);
 
-    memorySize = sizeof(M) + sizeof(n) + sizeof(x) + sizeof(y) + (2 * n * sizeof(int));
-    memoryPtr = realloc(memoryPtr, memorySize);
+    //memoryPtr = realloc(memoryPtr, memorySize);
     //+(x*sizeof(int)) + (y*sizeof(int))
+
+
+    //init x as -1
+    int* xPtr = (memoryPtr + (2* sizeof(int)));
+    //*xPtr = -1;
 
     int* A = (memoryPtr + 16);
     //third line & array
@@ -59,10 +113,26 @@ int main(void) {
     printf("n: %d \n",n);
     printf("\n");
 
-    int result;
-    result = fork();
+    //  detaching the shared memory segment from the address
+    //space of the calling process(parent)
+    shmdt(memoryPtr);
+    sleep(2);
 
-    printf("parent num: %d", num);
+    int result;
+    //  create 2 child processes
+    for (i = 0; i < 2; ++i)
+    {
+        result = fork();
+        if (result < 0)
+        {
+            printf("FORK error...\n");
+            exit(1);
+        }
+        if (result == 0)
+            break;
+        child[i] = result;
+    }
+
     if (result == 0) {
         printf("Child process %d. child pid: %d parent pid: %d \n",i, getpid(), getppid());
         printf("child M: %d\n", *(memoryPtr+4));
@@ -78,7 +148,9 @@ int main(void) {
             }
         }
         //write x value
-        *(memoryPtr + (2 * sizeof(int))) = xCounter;
+        *xPtr = xCounter;
+        printf("x address in child: %p\n", xPtr);
+        printf("x value in child: %d\n", *xPtr);
 
         //B start address
         int* B = &A[n+1];
@@ -91,10 +163,19 @@ int main(void) {
                 bCounter++;
             }
         }
+        shmdt(memoryPtr);
+        exit(0);
         //wait(NULL);
     }
     else {
-        //wait(NULL);
+        wait(NULL);
+        int* B = &A[n+1];
+        printf("B value in parent: %d\n", B[0]);
+        printf("x address in parent: %p\n", xPtr);
+        printf("x value in parent: %d\n", *xPtr);
+        while (*xPtr == -1) {
+            printf("x value in parent: %d\n", *xPtr);
+        }
 
         //TO DO MAin process child dan sonra z i printleyebilsin
         printf("A: %p\n", A);
@@ -103,6 +184,6 @@ int main(void) {
     }
 
 
-
+    shmdt(memoryPtr);
     return 0;
 }
