@@ -151,7 +151,8 @@ int main(int argc, char *argv[]) {
 
     int* A = (memoryPtr + (4 * sizeof(int)));
     //third line & array
-    for (int k = 0; k<n; k++) {
+    int k;
+    for (k = 0; k<n; k++) {
         fscanf(fptr, "%d", &num);
         A[k] = num;
     }
@@ -168,13 +169,10 @@ int main(int argc, char *argv[]) {
     //space of the calling process(parent)
     shmdt(memoryPtr);
 
-    
-
-
     // nullamayı unutma
     int result = 1;
     //  create 2 child processes
-    for (i = 0; i < 2; ++i)
+    for (i = 0; i < 2; i++)
     {
         result = fork();
         if (result < 0)
@@ -187,6 +185,8 @@ int main(int argc, char *argv[]) {
         child[i] = result;
     }
 
+    
+
     //parent
     if (result != 0) {
         shmid = shmget(KEYSHM, memorySize, 0);
@@ -197,28 +197,62 @@ int main(int argc, char *argv[]) {
         semctl(syncSem, 0, SETVAL, 0);
 
         int* B = &A[n+1];
-        printf("B value in parent: %d\n", B[0]);
-        printf("x address in parent: %p\n", xPtr);
-        printf("x value in parent: %d\n", *xPtr);
-        while (*xPtr == -1) {
-            printf("x value in parent: %d\n", *xPtr);
-        }
+        //printf("B value in parent: %d\n", B[0]);
+        //printf("x address in parent: %p\n", xPtr);
+        //printf("x value in parent: %d\n", *xPtr);
 
         //TO DO MAin process child dan sonra z i printleyebilsin
-        printf("A: %p\n", A);
-        printf("x value: %d", *(memoryPtr+8));
+        //printf("A: %p\n", A);
+        //printf("asdasdxzczxczcyeeeeeeeeeeeeeeeet");
+        //printf("x value: %d \n", *(memoryPtr+8));
 
         shmdt(memoryPtr);
 
-        printf("start child processes 1 \n");
         //start child 1
-        kill(child[0],12);
-
-        sem_wait(syncSem, 1);
+        //kill(child[0],12);
         //start child 2
-        kill(child[1],12);
+        //kill(child[1],12);
+
+        for (i =0; i<2; i++) {
+            sleep(2);
+            kill(child[i],12);
+        }
 
         sem_wait(syncSem, 2);
+        sleep(2);
+        printf("geri dmdms");
+
+        //print outputt
+        shmid = shmget(KEYSHM, memorySize, 0);
+        memoryPtr = (int*) shmat(shmid,0,0);
+        //print M
+        M = *(memoryPtr + sizeof(int));
+        printf("%d\n",M);
+        //print n
+        n = *(memoryPtr);
+        printf("%d\n",n);
+        //print A
+        A = (memoryPtr + (4 * sizeof(int)));
+        int i = 0;
+        for (i = 0; i<n; i++) {
+            printf("%d\n",A[i]);
+        }
+        //print x
+        x = *(memoryPtr + (2*sizeof(int)));
+        printf("%d\n",x);
+        //print B
+        B = (memoryPtr + (4*sizeof(int) + (n*sizeof(int))));
+        for (i = 0; i<x; i++) {
+            printf("%d\n",B[i]);
+        }
+        //print y
+        y = *(memoryPtr + (3*sizeof(int)));
+        printf("%d\n",y);
+        //print C
+        int* C = &A[n+x];
+        for (i = 0; i<x; i++) {
+            printf("%d\n",C[i]);
+        }
 
         //remove semaphores and created memory
         semctl(syncSem,0,IPC_RMID,0);
@@ -230,31 +264,34 @@ int main(int argc, char *argv[]) {
     //childs
     else {
         myOrder = i;
-        printf("myorder: %d", myOrder);
+        printf("myorder: %d \n", myOrder);
         pause();
+        printf("myorder: %d is starting \n", myOrder);
 
         if (myOrder == 0) {
             //child process 1
+            printf("process 1 starting \n");
             syncSem = semget(KEYSEM, 1, 0);
             shmid = shmget(KEYSHM, memorySize, 0);
             memoryPtr = (int*) shmat(shmid, 0, 0);
             
-            printf("child M: %d\n", *(memoryPtr+4));
-            printf("child n: %d\n", *(memoryPtr));
-            printf("child num: %d\n", num);
-            printf("A: %p\n", A);
+            //printf("child M: %d\n", *(memoryPtr+4));
+            //printf("child n: %d\n", *(memoryPtr));
+            //printf("child num: %d\n", num);
+            //printf("A: %p\n", A);
 
             //child 1
             int xCounter = 0;
-            for (int l = 0 ; l<n; l++) {
+            int l;
+            for (l = 0 ; l<n; l++) {
                 if (A[l] <= M) {
                     xCounter++;
                 }
             }
             //write x value
             *xPtr = xCounter;
-            printf("x address in child: %p\n", xPtr);
-            printf("x value in child: %d\n", *xPtr);
+            //printf("x address in child: %p\n", xPtr);
+            //printf("x value in child: %d\n", *xPtr);
             
             //increase sem by 1 so child 2 can start
             sem_signal(syncSem,1);
@@ -264,7 +301,7 @@ int main(int argc, char *argv[]) {
 
             //copy into B
             int bCounter = 0;
-            for (int l = 0 ; l<n; l++) {
+            for (l = 0 ; l<n; l++) {
                 if (A[l] <= M) {
                     B[bCounter] = A[l];
                     bCounter++;
@@ -272,50 +309,58 @@ int main(int argc, char *argv[]) {
             }
 
             shmdt(memoryPtr);
+            semctl(syncSem,0,IPC_RMID,0);
             //sem_signal(syncSem, 1);
 
-        } else if (myOrder == 1) {
+        } else {
             //child process 2
+            printf("process 2 starting \n");
             syncSem = semget(KEYSEM, 1, 0);
             shmid = shmget(KEYSHM, memorySize, 0);
             memoryPtr = (int*) shmat(shmid, 0, 0);
+
+            sem_wait(syncSem, 1);
             
-            printf("child M: %d\n", *(memoryPtr+4));
-            printf("child n: %d\n", *(memoryPtr));
-            printf("child num: %d\n", num);
-            printf("A: %p\n", A);
+            //printf("child M: %d\n", *(memoryPtr+4));
+            //printf("child n: %d\n", *(memoryPtr));
+            //printf("A: %p\n", A);
 
             //child 1
             int yCounter = 0;
-            for (int l = 0 ; l<n; l++) {
+            int l;
+            for (l = 0 ; l<n; l++) {
                 if (A[l] > M) {
                     yCounter++;
                 }
             }
             //write x value
             *yPtr = yCounter;
-            printf("y address in child: %p\n", yPtr);
-            printf("y value in child: %d\n", *yPtr);
+            //printf("y address in child: %p\n", yPtr);
+            //printf("y value in child: %d\n", *yPtr);
 
+            //printf("-----------------n: %d",n);
             //C start address
             int* C = &A[n+x];
 
             //copy into B
             int cCounter = 0;
-            for (int l = 0 ; l<n; l++) {
+            for (l = 0 ; l<n; l++) {
                 if (A[l] > M) {
                     C[cCounter] = A[l];
                     cCounter++;
                 }
             }
 
-            shmdt(memoryPtr);
             sem_signal(syncSem, 1);
+            semctl(syncSem,0,IPC_RMID,0);
+            shmdt(memoryPtr);
         }
 
 
         exit(0);
     }
+
+
 
 
     return 0;
