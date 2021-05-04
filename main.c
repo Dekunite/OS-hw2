@@ -220,12 +220,12 @@ int main(int argc, char *argv[]) {
         //kill(child[1],12);
 
         for (i =0; i<2; i++) {
-            sleep(3);
+            sleep(2);
             kill(child[i],12);
         }
 
         sem_wait(parentSem, 2);
-        sleep(2);
+        //sleep(2);
         printf("geri dmdms\n");
 
         //print outputt
