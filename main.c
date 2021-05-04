@@ -325,8 +325,8 @@ int main(int argc, char *argv[]) {
             }
 
             shmdt(memoryPtr);
-            semctl(syncSem,0,IPC_RMID,0);
-            semctl(parentSem,0,IPC_RMID,0);
+            //semctl(syncSem,0,IPC_RMID,0);
+            //semctl(parentSem,0,IPC_RMID,0);
             //sem_signal(syncSem, 1);
 
         } else {
@@ -338,11 +338,6 @@ int main(int argc, char *argv[]) {
             memoryPtr = (int*) shmat(shmid, 0, 0);
 
             sem_wait(syncSem, 1);
-            
-            
-            //printf("child M: %d\n", *(memoryPtr+4));
-            //printf("child n: %d\n", *(memoryPtr));
-            //printf("A: %p\n", A);
 
             //child 1
             int yCounter = 0;
@@ -354,22 +349,19 @@ int main(int argc, char *argv[]) {
             }
             //write x value
             *yPtr = yCounter;
-            //printf("y address in child: %p\n", yPtr);
-            //printf("y value in child: %d\n", *yPtr);
 
-            //printf("-----------------n: %d",n);
             //C start address
-            
+            x = *(memoryPtr + (2*sizeof(int)));
+            n = *(memoryPtr);
             int* C = (memoryPtr + (4*sizeof(int)) + (n*sizeof(int)) + (x*sizeof(int)) );
 
-            //copy into B
+            //copy into C
             int cCounter = 0;
-            n = *(memoryPtr);
             M = *(memoryPtr + sizeof(int));
             A = (memoryPtr + (4 * sizeof(int)));
             printf("n = %d", n);
             printf("M = %d", M);
-            printf("C, cCounter: %d \n", 2 );
+            printf("C, cCounter: %d \n", C[cCounter] );
             l=0;
             for (l = 0 ; l<n; l++) {
                 if (A[l] > M) {
@@ -381,10 +373,10 @@ int main(int argc, char *argv[]) {
             
             
 
-            sem_signal(syncSem, 1);
+            //sem_signal(syncSem, 1);
             sem_signal(parentSem, 1);
-            semctl(syncSem,0,IPC_RMID,0);
-            semctl(parentSem,0,IPC_RMID,0);
+            //semctl(syncSem,0,IPC_RMID,0);
+            //semctl(parentSem,0,IPC_RMID,0);
             shmdt(memoryPtr);
         }
 
