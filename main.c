@@ -1,3 +1,8 @@
+/*
+<Name Surname: Muhammet Derviş Kopuz>
+<Student Number: 504201531>
+*/
+
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -15,9 +20,6 @@
 
 #include <sys/stat.h> 
 
-#define LSIZ 128 
-#define RSIZ 10 
-
 key_t PARENTSEM = 363;
 key_t KEYSEM = 364;
 key_t KEYSHM = 365;
@@ -30,7 +32,6 @@ void sem_signal(int semid, int val)
     semaphore.sem_flg = 0;   
     semop(semid, &semaphore, 1);
 }
-
 
 //  decrement operation
 void sem_wait(int semid, int val)
@@ -64,8 +65,6 @@ void mysigset(int num)
 
 
 int main(int argc, char* argv[]) {
-    char line[RSIZ][LSIZ];
-	
     FILE *fptr = NULL; 
     FILE *outputPtr = NULL;
     int shmid = 0;
@@ -81,16 +80,12 @@ int main(int argc, char* argv[]) {
     mysigset(12);
     int myOrder;
 
-	printf("%s", argv[1]); 
-    printf("\n\n Read the file and store the lines into an array :\n");
-    char fname[50] = "example_input_3";
+    char* fname = "input.txt";
     if(argc > 1) {
-        //fname[50] = argv[1];
+        fname = argv[1];
     }
-    //fname[50] = "example_input_3";
     //char fname[20];
 	//scanf("%s",fname);	
-    int counter = 0;
 
     fptr = fopen(fname, "r");
     int num;
@@ -103,20 +98,18 @@ int main(int argc, char* argv[]) {
 
     int memorySize = sizeof(M) + sizeof(n) + sizeof(x) + sizeof(y) + (2 * n * sizeof(int));
     int* memoryPtr = NULL;
-    printf("memory size: %d", memorySize);
 
-    //  creating a shared memory area with the size of an int
+    //  creating a shared memory area with the defined memory size
     shmid = shmget(KEYSHM, memorySize, IPC_CREAT | 0700);
-    printf("memory size: %d", shmid);
 
     //  attaching the shared memory segment identified by shmid
     //to the address space of the calling process(parent)
     memoryPtr = (int *) shmat(shmid, 0, 0);
     *memoryPtr = 0;
     
-    //n değerini ata
+    //assign n value
     *(memoryPtr) = n; 
-    //m değerini ata
+    //assign m value
     *(memoryPtr + sizeof(n)) = M;
 
     //init x pointer
@@ -133,17 +126,18 @@ int main(int argc, char* argv[]) {
     }
     fclose(fptr);
 
+    /*
 	printf("\n The content of the file %s  are : \n",fname);    
     for(i = 0; i < n; ++i)
     {
         printf(" %d\n", A[i]);
     }
+    */
 
     //  detaching the shared memory segment from the address
     //space of the calling process(parent)
     shmdt(memoryPtr);
 
-    // nullamayı unutma
     int result;
     //  create 2 child processes
     for (i = 0; i < 2; i++)
@@ -182,17 +176,16 @@ int main(int argc, char* argv[]) {
         }
 
         sem_wait(parentSem, 2);
-        printf("geri dmdms\n");
 
-        //print outputt
+        //print output
         shmid = shmget(KEYSHM, memorySize, 0);
         memoryPtr = (int*) shmat(shmid,0,0);
 
-        char outputFileName = "output.txt";
+        const char* outputFileName = "output.txt";
         if(argc > 2) {
-        fname[50] = argv[2];
+        outputFileName = argv[2];
         }
-        outputPtr = fopen("output.txt","w");
+        outputPtr = fopen(outputFileName,"w");
 
         //print M
         M = *(memoryPtr + sizeof(int));
@@ -210,7 +203,6 @@ int main(int argc, char* argv[]) {
             }
             fprintf(outputPtr,"%d ",A[i]);
         }
-        //fprintf("\n");
         //print x
         x = *(memoryPtr + (2*sizeof(int)));
         fprintf(outputPtr,"%d\n",x);
@@ -237,35 +229,51 @@ int main(int argc, char* argv[]) {
         }
         fclose(outputPtr);
 
+        
         //print M
         M = *(memoryPtr + sizeof(int));
-        printf("%d\n",M);
+        printf("M: %d\n",M);
         //print n
         n = *(memoryPtr);
-        printf("%d\n",n);
+        printf("n: %d\n",n);
         //print A
         A = (memoryPtr + (4 * sizeof(int)));
         i = 0;
+        printf("A: ");
         for (i = 0; i<n; i++) {
+            if(i == n-1) {
+                printf("%d\n",A[i]);
+                break;
+            }
             printf("%d ",A[i]);
         }
-        printf("\n");
         //print x
         x = *(memoryPtr + (2*sizeof(int)));
-        printf("X = %d\n",x);
+        printf("x: %d\n",x);
         //print B
         B = (memoryPtr + (4*sizeof(int) + (n*sizeof(int))));
+        printf("B: ");
         for (i = 0; i<x; i++) {
-            printf("%d\n",B[i]);
+            if(i == x-1) {
+                printf("%d\n",B[i]);
+                break;
+            }
+            printf("%d ",B[i]);
         }
         //print y
         y = *(memoryPtr + (3*sizeof(int)));
-        printf("%d\n",y);
+        printf("y: %d\n",y);
         //print C
         C = (memoryPtr + (4*sizeof(int)) + (n*sizeof(int)) + (x*sizeof(int)) );
+        printf("C: ");
         for (i = 0; i<y; i++) {
-            printf("%d\n",C[i]);
+            if(i == y-1) {
+                printf("%d\n",C[i]);
+                break;
+            }
+            printf("%d ",C[i]);
         }
+        
 
         //remove semaphores and created memory
         semctl(syncSem,0,IPC_RMID,0);
@@ -278,9 +286,7 @@ int main(int argc, char* argv[]) {
     //childs
     else {
         myOrder = i;
-        printf("myorder: %d \n", myOrder);
         pause();
-        printf("myorder: %d is starting \n", myOrder);
 
         if (myOrder == 0) {
             //child process 1
@@ -295,8 +301,6 @@ int main(int argc, char* argv[]) {
             int l;
             n = *(memoryPtr);
             M = *(memoryPtr + sizeof(int));
-            printf("n = %d", n);
-            printf("M = %d", M);
             for (l = 0 ; l<n; l++) {
                 if (A[l] <= M) {
                     xCounter++;
@@ -304,8 +308,6 @@ int main(int argc, char* argv[]) {
             }
             //write x value
             *xPtr = xCounter;
-            printf("xcounter = %d", xCounter);
-            printf("x value in child: %d\n", *xPtr);
             
             //increase sem by 1 so child 2 can start
             sem_signal(syncSem,1);
@@ -319,7 +321,6 @@ int main(int argc, char* argv[]) {
             for (l = 0 ; l<n; l++) {
                 if (A[l] <= M) {
                     B[bCounter] = A[l];
-                    printf("B, bCounter: %d \n", B[bCounter] );
                     bCounter++;
                 }
             }
@@ -356,19 +357,13 @@ int main(int argc, char* argv[]) {
             int cCounter = 0;
             M = *(memoryPtr + sizeof(int));
             A = (memoryPtr + (4 * sizeof(int)));
-            printf("n = %d", n);
-            printf("M = %d", M);
-            printf("C, cCounter: %d \n", C[cCounter] );
             l=0;
             for (l = 0 ; l<n; l++) {
                 if (A[l] > M) {
                     C[cCounter] = A[l];
-                    printf("C, cCounter: %d \n", C[cCounter] );
                     cCounter++;
                 }
             }
-            
-            
 
             sem_signal(parentSem, 1);
             shmdt(memoryPtr);
