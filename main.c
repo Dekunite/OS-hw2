@@ -24,6 +24,7 @@ key_t PARENTSEM = 363;
 key_t KEYSEM = 364;
 key_t KEYSHM = 365;
 
+//increase semaphore value
 void sem_signal(int semid, int val)
 {
     struct sembuf semaphore;
@@ -33,7 +34,7 @@ void sem_signal(int semid, int val)
     semop(semid, &semaphore, 1);
 }
 
-//  decrement operation
+//decrease semaphore value
 void sem_wait(int semid, int val)
 {
     struct sembuf semaphore;
@@ -96,14 +97,14 @@ int main(int argc, char* argv[]) {
     fscanf(fptr, "%d", &num);
     n = num;
 
+    //calculate total memory size
     int memorySize = sizeof(M) + sizeof(n) + sizeof(x) + sizeof(y) + (2 * n * sizeof(int));
     int* memoryPtr = NULL;
 
-    //  creating a shared memory area with the defined memory size
+    //create shared memory with memory size
     shmid = shmget(KEYSHM, memorySize, IPC_CREAT | 0700);
 
-    //  attaching the shared memory segment identified by shmid
-    //to the address space of the calling process(parent)
+    //attach shared memory
     memoryPtr = (int *) shmat(shmid, 0, 0);
     *memoryPtr = 0;
     
@@ -127,15 +128,14 @@ int main(int argc, char* argv[]) {
     fclose(fptr);
 
     /*
-	printf("\n The content of the file %s  are : \n",fname);    
+	print file contents;    
     for(i = 0; i < n; ++i)
     {
         printf(" %d\n", A[i]);
     }
     */
 
-    //  detaching the shared memory segment from the address
-    //space of the calling process(parent)
+    //detach the shared memory segment
     shmdt(memoryPtr);
 
     int result;
@@ -158,18 +158,20 @@ int main(int argc, char* argv[]) {
         shmid = shmget(KEYSHM, memorySize, 0);
         memoryPtr = (int*) shmat(shmid,0,0);
 
-        //sync
+        //sync emaphore
         syncSem = semget(KEYSEM, 1, 0700|IPC_CREAT);
         semctl(syncSem, 0, SETVAL, 0);
 
-        //parent sem
+        //parent semaphore
         parentSem = semget(PARENTSEM, 1, 0700|IPC_CREAT);
         semctl(parentSem, 0, SETVAL, 0);
 
         int* B = &A[n+1];
 
+        //detach the shared memory segment
         shmdt(memoryPtr);
 
+        //signal child processes
         for (i =0; i<2; i++) {
             sleep(2);
             kill(child[i],12);
@@ -177,7 +179,7 @@ int main(int argc, char* argv[]) {
 
         sem_wait(parentSem, 2);
 
-        //print output
+        //get shared memory
         shmid = shmget(KEYSHM, memorySize, 0);
         memoryPtr = (int*) shmat(shmid,0,0);
 
@@ -187,13 +189,13 @@ int main(int argc, char* argv[]) {
         }
         outputPtr = fopen(outputFileName,"w");
 
-        //print M
+        //write M
         M = *(memoryPtr + sizeof(int));
         fprintf(outputPtr,"%d\n",M);
-        //print n
+        //write n
         n = *(memoryPtr);
         fprintf(outputPtr,"%d\n",n);
-        //print A
+        //write A
         A = (memoryPtr + (4 * sizeof(int)));
         int i = 0;
         for (i = 0; i<n; i++) {
@@ -203,10 +205,10 @@ int main(int argc, char* argv[]) {
             }
             fprintf(outputPtr,"%d ",A[i]);
         }
-        //print x
+        //write x
         x = *(memoryPtr + (2*sizeof(int)));
         fprintf(outputPtr,"%d\n",x);
-        //print B
+        //write B
         B = (memoryPtr + (4*sizeof(int) + (n*sizeof(int))));
         for (i = 0; i<x; i++) {
             if(i == x-1) {
@@ -215,10 +217,10 @@ int main(int argc, char* argv[]) {
             }
             fprintf(outputPtr,"%d ",B[i]);
         }
-        //print y
+        //write y
         y = *(memoryPtr + (3*sizeof(int)));
         fprintf(outputPtr,"%d\n",y);
-        //print C
+        //write C
         int* C = (memoryPtr + (4*sizeof(int)) + (n*sizeof(int)) + (x*sizeof(int)) );
         for (i = 0; i<y; i++) {
             if(i == y-1) {
@@ -286,11 +288,13 @@ int main(int argc, char* argv[]) {
     //childs
     else {
         myOrder = i;
+        //wait for a signal to continue
         pause();
 
         if (myOrder == 0) {
             //child process 1
             printf("process 1 starting \n");
+            //get semaphores and shared memory
             syncSem = semget(KEYSEM, 1, 0);
             parentSem = semget(PARENTSEM, 1, 0);
             shmid = shmget(KEYSHM, memorySize, 0);
@@ -301,6 +305,7 @@ int main(int argc, char* argv[]) {
             int l;
             n = *(memoryPtr);
             M = *(memoryPtr + sizeof(int));
+            //calculate x
             for (l = 0 ; l<n; l++) {
                 if (A[l] <= M) {
                     xCounter++;
@@ -309,7 +314,7 @@ int main(int argc, char* argv[]) {
             //write x value
             *xPtr = xCounter;
             
-            //increase sem by 1 so child 2 can start
+            //increase syncSem by 1 so child 2 can start
             sem_signal(syncSem,1);
             sem_signal(parentSem,1);
 
@@ -325,27 +330,31 @@ int main(int argc, char* argv[]) {
                 }
             }
 
+            //detach shared memory
             shmdt(memoryPtr);
 
         } else {
             //child process 2
             printf("process 2 starting \n");
+            //get semaphores and shared memory
             syncSem = semget(KEYSEM, 1, 0);
             parentSem = semget(PARENTSEM, 1, 0);
             shmid = shmget(KEYSHM, memorySize, 0);
             memoryPtr = (int*) shmat(shmid, 0, 0);
 
+            //synchronization with child 1
             sem_wait(syncSem, 1);
 
             //child 1
             int yCounter = 0;
             int l;
+            //calculate y
             for (l = 0 ; l<n; l++) {
                 if (A[l] > M) {
                     yCounter++;
                 }
             }
-            //write x value
+            //write y value
             *yPtr = yCounter;
 
             //C start address
@@ -366,6 +375,7 @@ int main(int argc, char* argv[]) {
             }
 
             sem_signal(parentSem, 1);
+            //detach memory
             shmdt(memoryPtr);
         }
 
